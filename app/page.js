@@ -1,113 +1,263 @@
-import Image from 'next/image'
+"use client";
+import React, { useEffect, useRef, useState } from "react";
+import { MaterialReactTable } from "material-react-table";
+import { useMemo } from "react";
+import Link from "next/link";
+import { BiEdit } from "react-icons/bi";
+import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
+import { columnsData } from "@/constrants/fractional";
+import axios from "axios";
+import { Box, Button } from "@mui/material";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import { ExportToCsv } from "export-to-csv";
+import ModeEditIcon from "@mui/icons-material/ModeEdit";
 
-export default function Home() {
+const Home = () => {
+  const [Data, setData] = useState([]);
+  const router = useRouter();
+  const cancelTokenSource = axios.CancelToken.source();
+
+  const [selectedFile, setSelectedFile] = useState(null);
+
+
+  const [isSuccess,setIsSucess] = useState(false)
+  const [userData,setUserData] = useState({})
+  const token  = localStorage.getItem("token")
+  const loggedUser = async () => {
+     const url = "http://127.0.0.1:8000/api/loggeduser"
+     const config = {
+         headers: {
+             'Authorization': `Bearer ${token}` // Set the bearer token
+         }
+     };
+     await axios.get(url,config)
+     .then((response) => {
+         if(response.data.status === 'success'){
+           setIsSucess(true)
+           setUserData(response.data.data)
+         }
+     })
+  }
+  useEffect(() => {
+     loggedUser()
+  },[token,isSuccess])
+
+
+
+  const fileInputRef = useRef(null);
+  const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+
+    setSelectedFile(file);
+    if (file) {
+      await handleUpload(file);
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleUpload = async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append("csv_file", file);
+
+      const response = await axios.post(
+        "http://127.0.0.1:8000/api/upload-csv",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      toast.success(response.data.message);
+      fraction_view();
+    } catch (error) {
+      console.error("Error uploading CSV file:", error);
+    }
+  };
+
+  const handleUpdatedata = (row) => {
+    console.log(row.original);
+    localStorage.setItem("update", JSON.stringify(row.original));
+
+    //  Now navigate to the FractionalPage with the encoded slug
+    router.push(`/${row.original.id}`);
+  };
+  const fraction_view = async () => {
+    const url = "http://127.0.0.1:8000/api/view";
+    const config = {
+      cancelToken: cancelTokenSource.token,
+    };
+    await axios
+      .get(url, config)
+      .then((response) => {
+        setData(response.data.data);
+      })
+      .catch((error) => {
+        if (axios.isCancel(error)) {
+          console.log("Request canceled");
+        } else {
+          console.log(error);
+        }
+      });
+  };
+  useEffect(() => {
+    fraction_view();
+    return () => {
+      cancelTokenSource.cancel(); // Cancel the request
+    };
+  }, []);
+  const columns = useMemo(() => columnsData, []);
+  const type = "fractional";
+  const handleDelete = async (id) => {
+    const url = `admin/fractional/delete/${id}/${type}`;
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`, // Set the bearer token
+      },
+    };
+    await axios
+      .post(url, {}, config)
+      .then((response) => {
+        toast.success(response.data.message);
+        fraction_view();
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  };
+  const csvOptions = {
+    fieldSeparator: ",",
+    quoteStrings: '"',
+    decimalSeparator: ".",
+    showLabels: true,
+    useBom: true,
+    useKeysAsHeaders: false,
+    headers: columns.map((c) => c.header),
+  };
+
+  const csvExporter = new ExportToCsv(csvOptions);
+
+  const handleExportData = () => {
+    csvExporter.generateCsv(Data);
+  };
+  const handleDeleteData = async () => {
+    try {
+      const response = await axios.get(
+        "http://127.0.0.1:8000/api/tickets-delete_all"
+      );
+
+      toast.success(response.data.message);
+      fraction_view();
+    } catch (error) {
+      toast.error("Error uploading CSV file");
+    }
+  };
+  const logoutHandle = async () => {
+    const url = "http://127.0.0.1:8000/api/logout"
+    const config = {
+        headers: {
+            'Authorization': `Bearer ${token}` // Set the bearer token
+        }
+    };
+    await axios.get(url,config)
+    .then((response) => {
+        if(response.data.status === 'success'){
+          localStorage.removeItem('token');
+          location.reload();
+        }
+    })
+  }
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <div className={`md:m-10 my-10 overflow-x-auto text-black`}>
+      <div className="flex justify-end"><button onClick={logoutHandle} className="bg-teal-500 p-3 px-8 rounded-full text-white">Logout</button></div>
+      <div className="md:flex justify-start items-center">
+        <h3 className="text-xl uppercase md:py-5 md:px-5 p-3 font-medium text-center">
+          UniMap Tracker
+        </h3>
+        <div className="flex justify-center items-center mb-2 md:mb-0">
+          
+         {
+           userData.role === 'admin' &&
+           <div>
+           <label
+             htmlFor="csvFileInput"
+             className="bg-teal-500 flex justify-center items-center px-6 rounded-full h-[45px] w-auto hover:bg-teal-900 uppercase text-base text-white"
+           >
+             Upload Export File
+           </label>
+           <input
+             type="file"
+             id="csvFileInput"
+             ref={fileInputRef}
+             accept=".csv"
+             onChange={handleFileChange}
+             style={{ display: "none" }}
+           />
+         </div>
+         }
         </div>
       </div>
+      <MaterialReactTable
+        columns={columns}
+        enableRowActions
+        renderRowActions={({ row, table }) => (
+          <div className="flex gap-5 justify-center items-center cursor-pointer">
+            <Button
+              //export all data that is currently in the table (ignore pagination, sorting, filtering, etc.)
+              onClick={() => handleUpdatedata(row, table)}
+              startIcon={<ModeEditIcon />}
+              variant="contained"
+              style={{
+                backgroundColor: "rgb(115 82 177)", // Set your desired background color
+              }}
+            >
+              Update
+            </Button>
+            {/* <div>
+              <button onClick={() => handleDelete(row.original.id)} className='bg-red-600 p-2 w-[120px] rounded-full text-white'>Delete</button>
+            </div> */}
+          </div>
+        )}
+        positionToolbarAlertBanner="bottom"
+        renderTopToolbarCustomActions={({ table }) => (
+          <Box
+            sx={{ display: "flex", gap: "1rem", p: "0.5rem", flexWrap: "wrap" }}
+          >
+            <Button
+              //export all data that is currently in the table (ignore pagination, sorting, filtering, etc.)
+              onClick={handleExportData}
+              startIcon={<FileDownloadIcon />}
+              variant="contained"
+              style={{
+                backgroundColor: "rgb(115 82 177)", // Set your desired background color
+              }}
+            >
+              Export All Data
+            </Button>
+            {
+              userData.role === 'admin' && 
+              <Button
+              //export all data that is currently in the table (ignore pagination, sorting, filtering, etc.)
+              onClick={handleDeleteData}
+              startIcon={<FileDownloadIcon />}
+              variant="contained"
+              style={{
+                backgroundColor: "rgb(115 82 177)", // Set your desired background color
+              }}
+            >
+              Delete All Data
+            </Button>
+            }
+          </Box>
+        )}
+        data={Data}
+      />
+    </div>
+  );
+};
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800 hover:dark:bg-opacity-30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore the Next.js 13 playground.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
-}
+export default Home;
