@@ -17,6 +17,7 @@ const AuthProvider = ({children}) => {
     .then((response) => {
         if(response.data.status === 'success'){
           setIsSucess(true)
+          console.log(response.data.data)
         }
     })
  }
