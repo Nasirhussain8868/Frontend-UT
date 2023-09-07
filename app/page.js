@@ -171,7 +171,7 @@ const Home = () => {
           onClick={logoutHandle}
           className="bg-teal-500 p-3 px-8 rounded-full text-white"
         >
-          Logout
+          Logout1
         </button>
       
       </div>
