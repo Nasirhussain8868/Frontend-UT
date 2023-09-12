@@ -5,7 +5,12 @@ import axios from 'axios'
 
 const AuthProvider = ({children}) => {
  const [isSuccess,setIsSucess] = useState(false)
- const token  = localStorage.getItem("token")
+ const [token ,settoken] = useState("")
+ useEffect(() => {
+  const tokens  = localStorage.getItem("token")
+  settoken(tokens)
+ }, []);
+
  const loggedUser = async () => {
     const url = "http://127.0.0.1:8000/api/loggeduser"
     const config = {

@@ -104,9 +104,12 @@ const Home = () => {
       });
   };
    
-  const totalCounts = Data.filter(item => item.user_id == userData.id);
+  const totaluserCounts = Data.filter(item => item.user_id == userData.id);
+  const userCompleted = totaluserCounts.filter(item => item.isComplete == 1)
+  const userPending = totaluserCounts.filter(item => item.isComplete == 0)
+  // const totalCounts = Data.filter(item => item.isAvtive == 0);
 
-
+console.log(userCompleted)
 
   useEffect(() => {
     fraction_view();
@@ -312,9 +315,10 @@ const Home = () => {
               </Button>
             )}
             <div className="border flex p-1 px-2 gap-10 ml-20 font-semibold">
-                <div>Assigned :{totalCounts.length}</div>
-                <div>Completed :</div>
-                <div>Pending :</div>
+                  {/* <div>Assigned :{totalCounts.length}</div> */}
+                <div>Assigned : {totaluserCounts.length}</div>
+                <div>Completed : {userCompleted.length}</div>
+                <div>Pending : {userPending.length}</div>
             </div>
           </Box>
         )}
