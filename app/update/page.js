@@ -9,6 +9,7 @@ import Inputs from "@/components/Inputs";
 
 const Update = () => {
   const retrievedObject = JSON.parse(localStorage.getItem("update"));
+  const token = localStorage.getItem("token");
   const [isSuccess, setIsSuccess] = useState(false);
   console.log(retrievedObject);
 
@@ -184,9 +185,13 @@ const Update = () => {
   const router = useRouter();
   const handleSubmit = async (values) => {
     const url = "http://127.0.0.1:8000/api/tickets-update";
-
+    const config = {
+      headers: {
+        'Authorization': `Bearer ${token}`, // Set the bearer token
+      },
+    };
     await axios
-      .post(url, values)
+      .post(url, values,config)
       .then((response) => {
         setIsSuccess(false);
         if (response.data.status === "success") {

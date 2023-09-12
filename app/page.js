@@ -22,6 +22,9 @@ const Home = () => {
 
   const [isSuccess, setIsSucess] = useState(false);
   const [userData, setUserData] = useState({});
+  const [assignedCount,setassignedCount] = useState(0)
+  const [completeCount,setCompleteCount] = useState(0)
+  const [pendingCount,setPendingCount] = useState(0)
   const token = localStorage.getItem("token");
   const loggedUser = async () => {
     const url = "http://127.0.0.1:8000/api/loggeduser";
@@ -93,12 +96,18 @@ const Home = () => {
       .get(url, config)
       .then((response) => {
         setData(response.data.data);
-        console.log(response.data.user)
+      
+        console.log(filteredData)
       })
       .catch((error) => {
           console.log(error);
       });
   };
+   
+  const totalCounts = Data.filter(item => item.user_id == userData.id);
+
+
+
   useEffect(() => {
     fraction_view();
   }, []);
@@ -136,16 +145,37 @@ const Home = () => {
   const handleExportData = () => {
     csvExporter.generateCsv(Data);
   };
-  const handleDeleteData = async () => {
-    try {
-      const response = await axios.get(
-        "http://127.0.0.1:8000/api/tickets-delete_all"
-      );
 
-      toast.success(response.data.message);
-      fraction_view();
-    } catch (error) {
-      toast.error("Error uploading CSV file");
+  const handleReassigndata = async (row) => {
+    const id = row.original.unique_id
+    console.log(id)
+    const url = "http://127.0.0.1:8000/api/reassign";
+    const config = {
+      headers: {
+        Authorization: `Bearer ${token}`, // Set the bearer token
+      },
+    };
+    await axios.post(url,{id}, config).then((response) => {
+      if (response.data.status === "success") {
+          toast.success(response.data.message)
+      }
+    });
+  }
+  
+  const handleDeleteData = async () => {
+
+    var result = confirm("Are you sure delete all data ?");
+    if(result){
+      try {
+        const response = await axios.get(
+          "http://127.0.0.1:8000/api/tickets-delete_all"
+        );
+  
+        toast.success(response.data.message);
+        fraction_view();
+      } catch (error) {
+        toast.error("Error uploading CSV file");
+      }
     }
   };
   const logoutHandle = async () => {
@@ -171,7 +201,7 @@ const Home = () => {
           onClick={logoutHandle}
           className="bg-teal-500 p-3 px-8 rounded-full text-white"
         >
-          Logout1
+          Logout
         </button>
       
       </div>
@@ -186,7 +216,7 @@ const Home = () => {
                 htmlFor="csvFileInput"
                 className="bg-teal-500 flex justify-center items-center px-6 rounded-full h-[45px] w-auto hover:bg-teal-900 uppercase text-base text-white"
               >
-                Upload Export File
+                Import File
               </label>
               <input
                 type="file"
@@ -205,7 +235,9 @@ const Home = () => {
         enableRowActions
         renderRowActions={({ row, table }) => (
           <div className="flex gap-5 justify-center items-center cursor-pointer">
-            <Button
+            {
+              userData.id == row.original.user_id && 
+              <Button
               //export all data that is currently in the table (ignore pagination, sorting, filtering, etc.)
               onClick={() => handleUpdatedata(row, table)}
               startIcon={<ModeEditIcon />}
@@ -213,10 +245,25 @@ const Home = () => {
               style={{
                 backgroundColor: `${row.original.isComplete ? 'rgb(115 82 177,0.5)' : 'rgb(115 82 177)'}`, // Set your desired background color
               }}
-              disabled={row.original.isComplete}
+              disabled={row.original?.isComplete}
             >
               Update
             </Button>
+            }
+            {
+              userData.role === "admin" &&
+             <Button
+              //export all data that is currently in the table (ignore pagination, sorting, filtering, etc.)
+              onClick={() => handleReassigndata(row)}
+              startIcon={<ModeEditIcon />}
+              variant="contained"
+              style={{
+                backgroundColor: '#14b8a6', // Set your desired background color
+              }}
+            >
+              Reassign
+            </Button>
+            }
           </div>
         )}
         positionToolbarAlertBanner="bottom"
@@ -264,6 +311,11 @@ const Home = () => {
                 Assign Count
               </Button>
             )}
+            <div className="border flex p-1 px-2 gap-10 ml-20 font-semibold">
+                <div>Assigned :{totalCounts.length}</div>
+                <div>Completed :</div>
+                <div>Pending :</div>
+            </div>
           </Box>
         )}
         data={Data}
