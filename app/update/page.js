@@ -11,7 +11,6 @@ const Update = () => {
   const retrievedObject = JSON.parse(localStorage.getItem("update"));
   const token = localStorage.getItem("token");
   const [isSuccess, setIsSuccess] = useState(false);
-  console.log(retrievedObject);
 
   const options = {
     main_comments_scl20_fm8628_v89: [
